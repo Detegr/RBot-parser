@@ -1,6 +1,7 @@
 #[macro_use]
 extern crate nom;
 
+use std::borrow::Cow;
 use std::str::from_utf8;
 use nom::space;
 use nom::IResult::*;
@@ -27,13 +28,13 @@ impl<'a> fmt::Display for Prefix<'a> {
 }
 #[derive(PartialEq, Debug)]
 pub enum Command<'a> {
-    Named(&'a str),
+    Named(Cow<'a, str>),
     Numeric(u16)
 }
 impl<'a> fmt::Display for Command<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
-            Command::Named(s) => write!(f, "{}", s),
+            Command::Named(ref s) => write!(f, "{}", s),
             Command::Numeric(n) => write!(f, "{}", n)
         }
     }
@@ -108,7 +109,7 @@ named!(command_parser <&[u8], Command>,
         || {
             match FromStr::from_str(cmd) {
                 Ok(numericcmd) => Command::Numeric(numericcmd),
-                Err(_) => Command::Named(cmd)
+                Err(_) => Command::Named(cmd.into())
             }
         }
     )

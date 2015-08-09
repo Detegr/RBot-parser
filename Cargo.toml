@@ -1,0 +1,7 @@
+[package]
+name = "rbot_parser"
+version = "0.1.0"
+authors = ["Antti Keränen <detegr@gmail.com>"]
+
+[dependencies]
+nom = "*"

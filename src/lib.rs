@@ -114,7 +114,7 @@ impl<'a> fmt::Display for Message<'a> {
 named!(message_parser <&[u8], Message>,
     chain!(
         parsed_prefix: prefix_parser? ~
-        parsed_command: command_parser   ~
+        parsed_command: command_parser ~
         parsed_params: map_res!(take_until_and_consume!(":"), from_utf8)? ~
         parsed_trailing: eol,
         || {
@@ -151,13 +151,12 @@ named!(command_parser <&[u8], Command>,
 named!(prefix_parser <&[u8], Prefix>,
     chain!(
         tag!(":") ~
-        hostprefix: host_parser?   ~
-        serverprefix: word_parser? ~
-        space                      ,
+        prefix: word_parser ~
+        space,
         || {
-            match hostprefix {
-                Some((nick, user, host)) => Prefix::User(nick, user, host),
-                None => Prefix::Server(serverprefix.unwrap())
+            match host_parser(prefix.as_bytes()) {
+                Done(_, (nick, user, host)) => Prefix::User(nick, user, host),
+                _ => Prefix::Server(prefix)
             }
         }
     )
@@ -186,16 +185,15 @@ mod tests {
     use super::*;
     use nom::IResult::*;
     #[test]
-    fn test_parsing_user() {
-        match super::prefix_parser(b":user!host@example.com ") {
-            Done(left, Prefix::User(nick, user, host)) => {
+    fn test_parsing_host() {
+        match super::host_parser(b"user!host@example.com ") {
+            Done(_, (nick, user, host)) => {
                 assert_eq!(nick, "user");
                 assert_eq!(user, "host");
                 assert_eq!(host, "example.com");
-                assert_eq!(left.len(), 0);
             },
             Incomplete(i) => panic!(format!("Incomplete: {:?}", i)),
-            _ => panic!("Error while parsing prefix")
+            _ => panic!("Error while parsing host")
         }
     }
     #[test]
@@ -203,7 +201,7 @@ mod tests {
         match super::message_parser(b"NOTICE AUTH :*** Looking up your hostname\r") {
             Done(_, msg) => {
                 assert_eq!(msg.prefix, None);
-                assert_eq!(msg.command, Command::Named("NOTICE"));
+                assert_eq!(msg.command, Command::Named("NOTICE".into()));
                 assert_eq!(msg.params, vec!["AUTH", "*** Looking up your hostname"]);
             },
             Incomplete(i) => panic!(format!("Incomplete: {:?}", i)),
@@ -248,5 +246,10 @@ mod tests {
     fn test_whitespace_separated() {
         let parsed = parse_message(":user!host@example.com PRIVMSG #channel :message\r\n").unwrap();
         assert_eq!(parsed.to_whitespace_separated(), "PRIVMSG user!host@example.com #channel message");
+    }
+
+    #[test]
+    fn test_inline_host() {
+        parse_message(":server.example.com 333 RustBot #channel user!host@example.com 123456789\r\n").unwrap();
     }
 }

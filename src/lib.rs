@@ -143,7 +143,16 @@ pub fn parse_message(input: &str) -> Result<Message, String>
     match message_parser(input.as_bytes()) {
         Done(_, msg) => Ok(msg),
         Incomplete(i) => Err(format!("Incomplete: {:?}", i)),
-        Error(i) => Err(format!("Error: {:?}", i))
+        Error(e) => {
+            match e {
+                nom::Err::Position(pos, data) => {
+                    Err(format!("Error at position {}: '{}' when parsing '{}'", pos, unsafe {std::str::from_utf8_unchecked(data)}, input))
+                }
+                _ => {
+                    Err(format!("Error: {:?}", e))
+                }
+            }
+        }
     }
 }
 

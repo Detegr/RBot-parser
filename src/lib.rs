@@ -13,6 +13,39 @@ named!(user_parser <&[u8], &str>, map_res!(chain!(user: take_until!("@") ~ tag!(
 named!(word_parser <&[u8], &str>, map_res!(take_until!(" "), from_utf8));
 named!(eol <&[u8], &str>, map_res!(take_until_and_consume!("\r"), from_utf8));
 
+#[derive(Debug)]
+pub struct ParserError {
+    data: String
+}
+impl std::fmt::Display for ParserError {
+    fn fmt(&self, fmt: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(fmt, "{}", self.data)
+    }
+}
+impl std::error::Error for ParserError {
+    fn description(&self) -> &str {
+        &self.data
+    }
+}
+impl<'a> From<nom::Err<'a>> for ParserError {
+    fn from(e: nom::Err) -> ParserError {
+        match e {
+            nom::Err::Position(pos, data) => {
+                ParserError {
+                    data: format!("Error at position {}: '{}'",
+                                  pos,
+                                  unsafe {std::str::from_utf8_unchecked(data)})
+                    }
+                }
+            err => {
+                ParserError {
+                    data: format!("Error: {:?}", err)
+                }
+            }
+        }
+    }
+}
+
 #[derive(PartialEq, Debug)]
 pub enum Prefix<'a> {
     User(&'a str, &'a str, &'a str),
@@ -138,21 +171,13 @@ named!(host_parser <&[u8], (&str, &str, &str)>,
     )
 );
 
-pub fn parse_message(input: &str) -> Result<Message, String>
-{
+pub fn parse_message(input: &str) -> Result<Message, ParserError> {
     match message_parser(input.as_bytes()) {
         Done(_, msg) => Ok(msg),
-        Incomplete(i) => Err(format!("Incomplete: {:?}", i)),
-        Error(e) => {
-            match e {
-                nom::Err::Position(pos, data) => {
-                    Err(format!("Error at position {}: '{}' when parsing '{}'", pos, unsafe {std::str::from_utf8_unchecked(data)}, input))
-                }
-                _ => {
-                    Err(format!("Error: {:?}", e))
-                }
-            }
-        }
+        Incomplete(i) => Err(ParserError {
+            data: format!("Incomplete: {:?}", i)
+        }),
+        Error(e) => Err(From::from(e))
     }
 }
 

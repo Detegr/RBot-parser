@@ -34,7 +34,7 @@ impl<'a> From<nom::Err<'a>> for ParserError {
                 ParserError {
                     data: format!("Error at position {}: '{}'",
                                   pos,
-                                  unsafe {std::str::from_utf8_unchecked(data)})
+                                  String::from_utf8_lossy(data))
                     }
                 }
             err => {
@@ -122,7 +122,7 @@ named!(message_parser <&[u8], Message>,
                 Some(p) => {
                     let _: &str = p; // TODO: This looks stupid. How should this be done?
                     p.split_whitespace()
-                        .chain(::std::iter::repeat(parsed_trailing).take(1))
+                        .chain(std::iter::repeat(parsed_trailing).take(1))
                         .collect()
                 },
                 None => parsed_trailing.split_whitespace().collect()

@@ -68,21 +68,6 @@ pub struct Message<'a> {
     pub command: Command<'a>,
     pub params: Vec<&'a str>
 }
-impl<'a> Message<'a> {
-    pub fn to_whitespace_separated(&self) -> String {
-        // TODO: I don't think this ret.push_str() stuff is ideal
-        let mut ret = String::new();
-        ret.push_str(&self.command.to_string()[..]);
-        ret.push_str(&" ");
-        match self.prefix {
-            Some(ref prefix) => ret.push_str(&prefix.to_string()[..]),
-            None => {}
-        };
-        ret.push_str(&" ");
-        ret.push_str(&self.params[..].join(" ")[..]);
-        ret
-    }
-}
 
 impl<'a> fmt::Display for Message<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -231,12 +216,6 @@ mod tests {
             };
         }
     }
-    #[test]
-    fn test_whitespace_separated() {
-        let parsed = parse_message(":user!host@example.com PRIVMSG #channel :message\r\n").unwrap();
-        assert_eq!(parsed.to_whitespace_separated(), "PRIVMSG user!host@example.com #channel message");
-    }
-
     #[test]
     fn test_inline_host() {
         parse_message(":server.example.com 333 RustBot #channel user!host@example.com 123456789\r\n").unwrap();

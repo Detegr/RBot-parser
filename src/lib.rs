@@ -27,21 +27,10 @@ impl std::error::Error for ParserError {
         &self.data
     }
 }
-impl<'a> From<nom::Err<'a>> for ParserError {
-    fn from(e: nom::Err) -> ParserError {
-        match e {
-            nom::Err::Position(pos, data) => {
-                ParserError {
-                    data: format!("Error at position {}: '{}'",
-                                  pos,
-                                  String::from_utf8_lossy(data))
-                    }
-                }
-            err => {
-                ParserError {
-                    data: format!("Error: {:?}", err)
-                }
-            }
+impl<'a> From<nom::Err<&'a [u8]>> for ParserError {
+    fn from(e: nom::Err<&'a [u8]>) -> ParserError {
+        ParserError {
+            data: format!("Error: {:?}", e)
         }
     }
 }
